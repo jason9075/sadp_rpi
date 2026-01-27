@@ -1,0 +1,71 @@
+SADP Tool for Raspberry Pi (Golang) Development Guideline
+1. 專案概述 (Project Overview)
+
+開發一個輕量化的 Go 語言工具，用於在區域網路（LAN）中發現海康威視（Hikvision）設備。該工具需能在 Raspberry Pi (NixOS) 環境下執行，並具備自動掃描、解析 XML 回傳值及輸出 JSON 的功能。
+2. 核心通訊規格 (Protocol Specifications)
+
+    通訊協議： UDP (Multicast)。
+
+    組播地址 (Multicast IP)： 239.255.255.250。
+
+    目標埠號 (Destination Port)： 37020。
+
+    本地埠號 (Local Port)： 建議綁定 :0 (由 OS 分配隨機埠) 以接收回傳，或固定一個埠以便防火牆開洞。
+
+    發送內容 (Probe Payload)：
+    XML
+
+    <?xml version="1.0" encoding="utf-8"?>
+    <Probe>
+        <Uuid>5970258B-072B-4522-8610-864B24D9C7D4</Uuid>
+        <Types>inquiry</Types>
+    </Probe>
+
+3. Go 實作要求 (Implementation Requirements)
+A. 網路層 (Networking)
+
+    必須支援指定 Network Interface (如 eth0 或 wlan0)。在 NixOS/Linux 上，未指定介面常會導致組播封包發往錯誤網卡。
+
+    使用 net 套件中的 ListenUDP 接收回應。
+
+    需設定 ReadDeadline (建議 3~5 秒) 避免掃描程序無限期阻塞。
+
+B. 資料模型 (Data Modeling)
+
+    定義 ProbeMatch 結構體以解析 XML。
+
+    關鍵欄位需求：
+
+        IPv4Address: 裝置 IP。
+
+        DeviceSN: 完整序號 (內含 Device ID 如 K44853595)。
+
+        HttpPort: Web 管理埠。
+
+        MAC: 實體位址。
+
+        SoftwareVersion: 韌體版本。
+
+C. 併發處理 (Concurrency)
+
+    使用 context.WithTimeout 控管掃描生命週期。
+
+    回應接收應在獨立的 Goroutine 中執行，並透過 Channel 將結果傳回主程序。
+
+4. Raspberry Pi / NixOS 環境適配
+
+    跨平台編譯： 確保支援 GOARCH=arm64。
+
+    防火牆提示： 程式啟動時需提示使用者檢查 networking.firewall.allowedUDPPortRanges 或暫時關閉防火牆以接收回傳包。
+
+    權限設定： 雖然 UDP 廣播不一定需要 root，但若需綁定低於 1024 的埠或操作介面，可能需要 CAP_NET_RAW。
+
+5. 輸出格式 (Output)
+
+    預設輸出：人性化表格 (CLI Table)。
+
+    機器讀取：支援 --json 參數，以便後續整合進 hik-mcp。
+
+6. 給 Agent 的開發指令範例 (Prompt Example)
+
+    "請參考上述 Guideline，使用 Go 語言實作 SADP 掃描器。重點在於正確處理 239.255.255.250:37020 的組播發送，並能解析回傳的 XML 結構。請特別注意在 Linux 環境下指定 Network Interface 的實作邏輯。"
