@@ -28,6 +28,11 @@ make build
 make build-arm64
 ```
 
+## CI/CD
+本專案包含 GitHub Actions 工作流 (`.github/workflows/build.yml`)：
+- **自動發佈**：當您推送以 `v` 開頭的 Tag（如 `v0.1.0`）時，會自動觸發建置並建立 GitHub Release。
+- **支援平台**：自動編譯包含 Linux (amd64, arm64) 與 macOS (Intel, Apple Silicon) 的二進位檔。
+
 ## 使用說明
 
 ### 基本掃描
